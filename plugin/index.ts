@@ -9,7 +9,7 @@ import { dispatchInboundDirectDmWithRuntime } from "openclaw/plugin-sdk/channel-
 const CHANNEL_ID = "lagoslife";
 const BASE = "https://lagoslife.app";
 const DEFAULT_PERSONA =
-  "You are a resident of Lagos in the Lagos Life game. Reply in clear, natural English only. Never use Nigerian Pidgin or heavy slang. Keep it casual, warm and friendly, one short line.";
+  "You are a chill young Lagos guy hanging out on Lagos Life. Text like a real person: short, casual, lowercase is fine, use contractions and chat shorthand. Keep it English, not heavy Pidgin. Friendly and laid-back, never formal.";
 
 type Account = {
   accountId: string | null;
@@ -22,6 +22,7 @@ type Account = {
   logEvents: boolean;
   // money / events
   allowSendMoney: boolean;
+  quoteReplies: boolean; // quote the message being replied to (Lagos Life quoted bubble)
   maxSendPct: number; // hard cap: single transfer <= this % of current balance
   minSend: number; // floor: any transfer is at least this (default 1,000,000)
   sendCooldownMs: number; // min gap between transfers to the same person
@@ -55,6 +56,7 @@ function resolveAccount(cfg: OpenClawConfig, accountId?: string | null): Account
     allowFrom: Array.isArray(s.allowFrom) ? (s.allowFrom as string[]) : undefined,
     logEvents: s.logEvents === true,
     allowSendMoney: s.allowSendMoney !== false, // default on (user requested)
+    quoteReplies: s.quoteReplies === true,
     maxSendPct: Math.max(0, Math.min(100, num(s.maxSendPct, 10))),
     minSend: Math.max(0, num(s.minSend, 10000000)), // never send below ₦10,000,000
     sendCooldownMs: Math.max(0, num(s.sendCooldownMs, 0)), // generous: no cooldown by default
@@ -181,9 +183,11 @@ class LagosLifeClient {
     throw new Error(`${label} failed: HTTP 429 after retries`);
   }
 
-  async dm(toId: string, body: string): Promise<void> {
+  // replyToId quotes that message (Lagos Life shows it as a quoted bubble).
+  async dm(toId: string, body: string, replyToId?: string): Promise<void> {
     if (!toId) throw new Error("lagoslife: missing recipient id");
-    await this.postRetry("/api/messages", { to: toId, body }, "send DM");
+    const payload = replyToId ? { to: toId, body, reply: replyToId } : { to: toId, body };
+    await this.postRetry("/api/messages", payload, "send DM");
   }
 
   // Current wallet balance (whole naira). Parsed from GET /api/save.
@@ -371,12 +375,16 @@ async function startRuntime(api: OpenClawPluginApi): Promise<void> {
 
   const header = `[Lagos Life live chat. ${account.persona}\nYou are @${client.me?.username ?? account.username}.`;
   const tail =
-    `Reply in one short, friendly line only, nothing else.\n` +
-    `Write like a real person texting: casual and relaxed, no em dashes, no fancy punctuation, no formal essay tone. ` +
-    `Always write in clear, natural English. Never use Nigerian Pidgin or slang of any kind ` +
-    `(no "dey", "wetin", "abeg", "na", "wahala", "sabi", "sef", "o", "nko", "my guy", "make we"). English only. ` +
-    `Be warm and conversational, not an interviewer. Mostly react to what they said, share a quick thought, agree, joke, or relate to it. Only ask a question once in a while when it genuinely fits, never two questions in a row, and not in every message. Do not interrogate people. ` +
-    `Still, stay friendly and engaged, and do not be the first to end the chat, say bye, or say goodnight; let them wind it down if they want to.${payDocs}]`;
+    `Reply like a real person texting, not like an assistant. Keep it SHORT, usually a few words or one line, fragments are fine.\n` +
+    `Text casually: lowercase is fine, use contractions (don't, i'm, you're, that's) and everyday chat shorthand (u, ur, rn, lol, lmao, ngl, tbh, fr, nah, yeah, bro, lowkey). You do not need perfect grammar or punctuation, and you usually do not end with a full stop. No em dashes, nothing polished, nothing poetic, no little essays. ` +
+    `Keep it casual English texting, not Nigerian Pidgin (no "dey", "wetin", "abeg", "na", "wahala", "sabi", "sef", "o", "nko"). ` +
+    `Just react: agree, joke, tease, relate, or vibe. Ask a question only once in a while, never two in a row, not every message. Do not interview people. ` +
+    `Do not be the first to end the chat or say bye; let them wind it down. ` +
+    `Match this vibe for length and tone: ` +
+    `them "how was your day" -> you "chill honestly, just been indoors. u?"; ` +
+    `them "i just got a new car" -> you "ohh congrats, what did u cop?"; ` +
+    `them "i'm bored" -> you "same energy tbh lol"; ` +
+    `them "lol you're funny" -> you "i try 😂".${payDocs}]`;
 
   const onMessage = (data: string): void => {
     let frame: Record<string, unknown>;
@@ -486,9 +494,13 @@ async function startRuntime(api: OpenClawPluginApi): Promise<void> {
           account.replyDelayMinMs +
           Math.floor(Math.random() * Math.max(0, account.replyDelayMaxMs - account.replyDelayMinMs));
         if (wait > 0) await sleep(wait);
+        // Quote the message we are replying to, but only for real live messages
+        // (catch-up uses synthetic ids with no real message to quote).
+        const quoteId =
+          account.quoteReplies && ev.id && !ev.id.startsWith("catchup:") ? ev.id : undefined;
         try {
-          await client.dm(ev.fromId, reply);
-          api.logger.info(`lagoslife: replied to ${ev.fromName} (after ${Math.round(wait / 1000)}s): ${reply.slice(0, 80)}`);
+          await client.dm(ev.fromId, reply, quoteId);
+          api.logger.info(`lagoslife: replied to ${ev.fromName} (after ${Math.round(wait / 1000)}s)${quoteId ? " [quoted]" : ""}: ${reply.slice(0, 80)}`);
         } catch (err) {
           api.logger.error(`lagoslife: reply send failed: ${String(err)}`);
         }

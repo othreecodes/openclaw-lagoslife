@@ -44,6 +44,11 @@
             "default": true,
             "description": "Allow the agent to send in-game money (via a <<pay AMOUNT>> tag in its reply)"
           },
+          "quoteReplies": {
+            "type": "boolean",
+            "default": false,
+            "description": "Quote the message being replied to, so it shows as a quoted bubble (live replies only)"
+          },
           "maxSendPct": {
             "type": "number",
             "default": 10,
@@ -93,6 +98,11 @@
             "type": "number",
             "default": 0,
             "description": "Only catch up threads idle at least this long, so the live reply queue is not double-replied"
+          },
+          "catchUpReplyAll": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, catch-up ignores the ender/event skip filter and replies to every unanswered thread"
           }
         },
         "required": ["username", "password"]
