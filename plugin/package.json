@@ -1,0 +1,22 @@
+{
+  "name": "@openclaw/lagoslife",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  },
+  "openclaw": {
+    "extensions": ["./index.ts"],
+    "setupEntry": "./setup-entry.ts",
+    "channel": {
+      "id": "lagoslife",
+      "label": "Lagos Life",
+      "blurb": "Listen and reply on the Lagos Life live websocket."
+    }
+  }
+}

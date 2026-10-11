@@ -1,0 +1,108 @@
+{
+  "id": "lagoslife",
+  "name": "Lagos Life",
+  "description": "Lagos Life live websocket channel (listen + reply)",
+  "channels": ["lagoslife"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  },
+  "channelConfigs": {
+    "lagoslife": {
+      "schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "username": {
+            "type": "string",
+            "description": "Lagos Life account username"
+          },
+          "password": {
+            "type": "string",
+            "description": "Lagos Life account password"
+          },
+          "persona": {
+            "type": "string",
+            "description": "In-character voice the agent adopts when replying in the game"
+          },
+          "allowFrom": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Optional allowlist of sender ids or usernames"
+          },
+          "logEvents": {
+            "type": "boolean",
+            "default": false,
+            "description": "Log unmatched websocket frames to help confirm the message schema"
+          },
+          "allowSendMoney": {
+            "type": "boolean",
+            "default": true,
+            "description": "Allow the agent to send in-game money (via a <<pay AMOUNT>> tag in its reply)"
+          },
+          "maxSendPct": {
+            "type": "number",
+            "default": 10,
+            "description": "Hard cap: any single transfer is limited to this percent of the current balance"
+          },
+          "minSend": {
+            "type": "number",
+            "default": 10000000,
+            "description": "Floor: every transfer is at least this many naira (if 10% of balance is below it, nothing is sent)"
+          },
+          "sendCooldownMs": {
+            "type": "number",
+            "default": 300000,
+            "description": "Minimum time between money transfers to the same person (anti-drain)"
+          },
+          "reactToSocial": {
+            "type": "boolean",
+            "default": false,
+            "description": "Reply to bare waves/hellos/gists (noisy; off by default). Money and gifts are always handled."
+          },
+          "replyDelayMinMs": {
+            "type": "number",
+            "default": 1000,
+            "description": "Minimum random delay before a reply is sent, to look human"
+          },
+          "replyDelayMaxMs": {
+            "type": "number",
+            "default": 10000,
+            "description": "Maximum random delay before a reply is sent, to look human"
+          },
+          "catchUpOnStart": {
+            "type": "boolean",
+            "default": false,
+            "description": "On startup, reply to chats whose last message was from the other player (skips money/gift/wave events and short enders)"
+          },
+          "catchUpMax": {
+            "type": "number",
+            "default": 40,
+            "description": "Maximum number of unreplied chats to catch up on per startup"
+          },
+          "catchUpStaggerMs": {
+            "type": "number",
+            "default": 8000,
+            "description": "Delay between catch-up dispatches, to avoid rate limits"
+          },
+          "catchUpMinAgeMs": {
+            "type": "number",
+            "default": 0,
+            "description": "Only catch up threads idle at least this long, so the live reply queue is not double-replied"
+          }
+        },
+        "required": ["username", "password"]
+      },
+      "uiHints": {
+        "password": {
+          "label": "Password",
+          "sensitive": true
+        }
+      }
+    }
+  }
+}
